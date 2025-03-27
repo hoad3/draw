@@ -5,8 +5,35 @@ class SocketManager {
   private socket: Socket | null = null;
 
   private constructor() {
-    // Private constructor to prevent direct construction
-    // calls with the `new` operator
+    this.socket = io('http://localhost:3000', {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000
+    });
+    this.setupSocketListeners();
+  }
+
+  private setupSocketListeners() {
+    if (!this.socket) return;
+
+    this.socket.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('Disconnected from server:', reason);
+    });
+
+    this.socket.on('error', (error) => {
+      console.error('Socket error:', error);
+    });
   }
 
   public static getInstance(): SocketManager {
@@ -19,33 +46,14 @@ class SocketManager {
   public getSocket(): Socket {
     if (!this.socket) {
       this.socket = io('http://localhost:3000', {
+        withCredentials: true,
         transports: ['websocket', 'polling'],
-        autoConnect: true,
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        timeout: 20000,
-        forceNew: true,
-        path: '/socket.io/',
-        withCredentials: true
+        timeout: 20000
       });
-
-      this.socket.on('connect', () => {
-        console.log('Connected to server');
-      });
-
-      this.socket.on('disconnect', () => {
-        console.log('Disconnected from server');
-      });
-
-      this.socket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-      });
-
-      this.socket.on('error', (error) => {
-        console.error('Socket error:', error);
-      });
+      this.setupSocketListeners();
     }
     return this.socket;
   }

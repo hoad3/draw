@@ -1,7 +1,8 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { DrawData } from '../../types/draw';
 
 interface User {
-  id: string | undefined;
+  id: string;
   username: string;
 }
 
@@ -9,6 +10,7 @@ interface Room {
   id: string;
   password: string;
   users: User[];
+  drawings: DrawData[];
 }
 
 interface RoomState {
@@ -40,7 +42,7 @@ const roomSlice = createSlice({
         state.currentRoom.users.push(action.payload);
       }
     },
-    removeUserFromRoom: (state, action: PayloadAction<string | undefined>) => {
+    removeUserFromRoom: (state, action: PayloadAction<string>) => {
       if (state.currentRoom) {
         state.currentRoom.users = state.currentRoom.users.filter(
           user => user.id !== action.payload
@@ -53,12 +55,23 @@ const roomSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
+    addDrawing: (state, action: PayloadAction<DrawData>) => {
+      if (state.currentRoom) {
+        state.currentRoom.drawings.push(action.payload);
+      }
+    },
+    clearDrawings: (state) => {
+      if (state.currentRoom) {
+        state.currentRoom.drawings = [];
+      }
+    },
     clearRoom: (state) => {
-      state.currentUser = null;
       state.currentRoom = null;
+      state.currentUser = null;
       state.error = null;
+      state.isConnected = false;
     }
-  }
+  },
 });
 
 export const {
@@ -68,6 +81,8 @@ export const {
   removeUserFromRoom,
   setConnectionStatus,
   setError,
+  addDrawing,
+  clearDrawings,
   clearRoom
 } = roomSlice.actions;
 
