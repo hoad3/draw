@@ -6,7 +6,6 @@ import cors from 'cors';
 const app = express();
 const httpServer = createServer(app);
 
-// CORS configuration
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
@@ -91,12 +90,34 @@ io.on('connection', (socket) => {
         return;
       }
 
-      room.users.push({ id: socket.id, username: data.username });
-      socket.join(data.roomId);
-      socket.to(data.roomId).emit('user-joined', data.username);
-      console.log('User joined room:', data.roomId);
-      socket.emit('room-joined', { roomId: data.roomId, username: data.username });
-      socket.emit('load-drawings', room.drawings);
+      // Check if user is already in the room
+      const existingUser = room.users.find(user => user.id === socket.id);
+      if (!existingUser) {
+        room.users.push({ id: socket.id, username: data.username });
+        socket.join(data.roomId);
+        console.log('User joined room:', data.roomId);
+        
+        // Notify all users in the room about the new user
+        io.to(data.roomId).emit('user-joined', data.username);
+        
+        // Send confirmation to the joining user with the complete user list
+        socket.emit('room-joined', { 
+          roomId: data.roomId, 
+          username: data.username,
+          users: room.users // Send the complete user list
+        });
+        
+        // Send existing drawings to the new user
+        socket.emit('load-drawings', room.drawings);
+      } else {
+        console.log('User already in room:', data.roomId);
+        socket.emit('room-joined', { 
+          roomId: data.roomId, 
+          username: data.username,
+          users: room.users // Send the complete user list
+        });
+        socket.emit('load-drawings', room.drawings);
+      }
     } catch (error) {
       console.error('Error joining room:', error);
       socket.emit('error', { message: 'Failed to join room' });

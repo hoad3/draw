@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SocketManager from '../socket';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { addUserToRoom, removeUserFromRoom, setConnectionStatus } from '../store/slices/roomSlice';
+import { addUserToRoom, removeUserFromRoom, setConnectionStatus, setCurrentRoom } from '../store/slices/roomSlice';
 
 interface FieldDrawProps {
   width?: number;
@@ -22,6 +22,12 @@ interface DrawData {
   roomId: string;
 }
 
+interface RoomJoinedData {
+  roomId: string;
+  username: string;
+  users: { id: string; username: string }[];
+}
+
 const FieldDraw: React.FC<FieldDrawProps> = ({
   width = 800,
   height = 600,
@@ -32,6 +38,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
   const username = searchParams.get('username') || '';
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(state => state.room.currentUser);
+  const currentRoom = useAppSelector(state => state.room.currentRoom);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
@@ -93,6 +100,15 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
       dispatch(removeUserFromRoom(socket.id));
     });
 
+    socket.on('room-joined', (data: RoomJoinedData) => {
+      console.log('Room joined with users:', data.users);
+      dispatch(setCurrentRoom({
+        id: data.roomId,
+        password: currentRoom?.password || '',
+        users: data.users
+      }));
+    });
+
     return () => {
       dispatch(setConnectionStatus(false));
       socket.off('load-drawings');
@@ -100,6 +116,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
       socket.off('clear-canvas');
       socket.off('user-joined');
       socket.off('user-left');
+      socket.off('room-joined');
     };
   }, []); // Empty dependency array to run only once
 
@@ -224,53 +241,72 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex gap-4 items-center">
-        <div className="bg-gray-100 px-4 py-2 rounded-lg">
-          <p className="text-sm text-gray-600">Room: {roomId}</p>
-          <p className="text-sm text-gray-600">User: {username}</p>
+    <div className="flex gap-8">
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex gap-4 items-center">
+          <div className="bg-gray-100 px-4 py-2 rounded-lg">
+            <p className="text-sm text-gray-600">Room: {roomId}</p>
+            <p className="text-sm text-gray-600">User: {username}</p>
+          </div>
+          <input
+            type="color"
+            value={currentColorRef.current}
+            onChange={(e) => {
+              currentColorRef.current = e.target.value;
+              const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
+              if (context) {
+                context.strokeStyle = e.target.value;
+              }
+            }}
+            className="w-10 h-10 rounded cursor-pointer"
+          />
+          <input
+            type="range"
+            min="1"
+            max="20"
+            value={currentLineWidthRef.current}
+            onChange={(e) => {
+              currentLineWidthRef.current = Number(e.target.value);
+              const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
+              if (context) {
+                context.lineWidth = Number(e.target.value);
+              }
+            }}
+            className="w-32"
+          />
+          <button
+            onClick={clearCanvas}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Clear
+          </button>
         </div>
-        <input
-          type="color"
-          value={currentColorRef.current}
-          onChange={(e) => {
-            currentColorRef.current = e.target.value;
-            const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
-            if (context) {
-              context.strokeStyle = e.target.value;
-            }
-          }}
-          className="w-10 h-10 rounded cursor-pointer"
+        <canvas
+          ref={canvasRef}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseOut={stopDrawing}
+          style={{ border: '1px solid #ccc' }}
         />
-        <input
-          type="range"
-          min="1"
-          max="20"
-          value={currentLineWidthRef.current}
-          onChange={(e) => {
-            currentLineWidthRef.current = Number(e.target.value);
-            const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
-            if (context) {
-              context.lineWidth = Number(e.target.value);
-            }
-          }}
-          className="w-32"
-        />
-        <button
-          onClick={clearCanvas}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          Clear
-        </button>
       </div>
-      <canvas
-        ref={canvasRef}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={stopDrawing}
-        onMouseOut={stopDrawing}
-        style={{ border: '1px solid #ccc' }}
-      />
+
+      {currentRoom && (
+        <div className="bg-white rounded-lg shadow-lg p-4 min-w-[200px] h-fit">
+          <h3 className="text-lg font-semibold mb-3 text-gray-700">Users in Room</h3>
+          <div className="space-y-2">
+            {currentRoom.users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center space-x-2 p-2 bg-gray-50 rounded-md"
+              >
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-gray-700">{user.username}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
