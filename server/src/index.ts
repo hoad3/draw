@@ -13,7 +13,7 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? ['https://drawbattle.daongochoa.click']  // Chỉ cần domain HTTPS
     : 'http://localhost:5173',
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -60,8 +60,7 @@ io.on('connection', (socket) => {
 
       rooms.set(data.roomId, newRoom);
       socket.join(data.roomId);
-      // console.log('Room created:', data.roomId);
-      socket.emit('room-created', { 
+      socket.emit('room-created', {
         roomId: data.roomId,
         username: data.username,
         users: newRoom.users
@@ -93,8 +92,7 @@ io.on('connection', (socket) => {
       if (!existingUser) {
         room.users.push({ id: socket.id, username: data.username });
         socket.join(data.roomId);
-        // console.log('User joined room:', data.roomId);
-        
+
         socket.emit('room-joined', {
           roomId: data.roomId, 
           username: data.username,
@@ -183,10 +181,8 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Clear the room's drawings
       room.drawings = [];
 
-      // Broadcast the clear-canvas event to all users in the room
       io.to(roomId).emit('clear-canvas');
     } catch (error) {
       console.error('Error clearing canvas:', error);
@@ -196,7 +192,6 @@ io.on('connection', (socket) => {
   socket.on('game-start', (data: { roomId: string }) => {
     const room = rooms.get(data.roomId);
     if (room) {
-      // Broadcast game-start event to all users in the room
       room.users.forEach(user => {
         const userSocket = Array.from(io.sockets.sockets.values())
           .find(s => s.id === user.id);

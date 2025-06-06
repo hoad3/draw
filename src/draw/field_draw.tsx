@@ -57,33 +57,26 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
 
   const [userScores, setUserScores] = useState<{ [username: string]: string }>({});
 
-  // Initialize canvas and socket listeners
   useEffect(() => {
     const socket = SocketManager.getInstance().getSocket();
     dispatch(setConnectionStatus(true));
 
     socket.on('load-drawings', (drawings: DrawData[]) => {
-      // console.log('Loading drawings:', drawings.length);
-      // Clear canvas first
       const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
       if (context) {
         context.clearRect(0, 0, width, height);
       }
-      // Redraw all existing drawings
       drawings.forEach(drawData => {
         drawOnCanvas(drawData);
       });
-      // Update color statistics for all drawings
       updateStats(drawings);
     });
 
     socket.on('draw', (drawData: DrawData) => {
-      // console.log('Received draw data:', drawData);
       drawOnCanvas(drawData);
     });
 
     socket.on('scores-updated', (scores: { username: string; percentage: string }[]) => {
-      // Update the scores display
       const newScores: { [username: string]: string } = {};
       scores.forEach(score => {
         newScores[score.username] = score.percentage;
@@ -92,7 +85,6 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('clear-canvas', () => {
-      // console.log('Clearing canvas');
       const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
       if (context) {
         context.clearRect(0, 0, width, height);
@@ -102,7 +94,6 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('user-joined', (data: { username: string; users: { id: string; username: string }[] }) => {
-      // console.log(`${data.username} joined the room`);
       if (currentUser && currentRoom) {
         dispatch(setCurrentRoom({
           id: currentRoom.id,
@@ -117,7 +108,6 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('user-left', (username: string) => {
-      // console.log(`${username} left the room`);
       if (currentRoom) {
         const updatedUsers = currentRoom.users.filter(user => user.username !== username);
         dispatch(setCurrentRoom({
@@ -128,7 +118,6 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('room-joined', (data: RoomJoinedData) => {
-      // console.log('Room joined with users:', data.users);
       dispatch(setCurrentRoom({
         id: data.roomId,
         password: currentRoom?.password || '',
@@ -156,9 +145,8 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
       socket.off('room-joined');
       socket.off('error');
     };
-  }, []); // Empty dependency array to run only once
+  }, []);
 
-  // Initialize canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;

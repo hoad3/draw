@@ -16,18 +16,15 @@ const colorStatsSlice = createSlice({
     updateColorStats: (state, action: PayloadAction<{ roomId: string; stats: ColorStat[] }>) => {
       const { roomId, stats } = action.payload;
       
-      // Get existing stats for the room
       const existingStats = new Map(
         (state.roomStats[roomId] || []).map(stat => [`${stat.username}-${stat.color}`, stat])
       );
       
-      // Update or add new stats
       stats.forEach(newStat => {
         const key = `${newStat.username}-${newStat.color}`;
         const existingStat = existingStats.get(key);
         
         if (existingStat) {
-          // Accumulate pixels and update percentage
           existingStat.pixelCount += newStat.pixelCount;
           existingStat.percentage = newStat.percentage;
         } else {
@@ -35,7 +32,6 @@ const colorStatsSlice = createSlice({
         }
       });
       
-      // Update room stats
       state.roomStats[roomId] = Array.from(existingStats.values());
     },
     addColorStat: (state, action: PayloadAction<{ roomId: string; stat: ColorStat }>) => {
@@ -47,7 +43,6 @@ const colorStatsSlice = createSlice({
       );
 
       if (existingStat) {
-        // Accumulate pixels and update percentage
         existingStat.pixelCount += stat.pixelCount;
         existingStat.percentage = stat.percentage;
       } else {

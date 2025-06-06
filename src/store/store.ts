@@ -9,7 +9,7 @@ export const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: false // Disable serializable state invariant middleware
+      serializableCheck: false
     })
 });
 
