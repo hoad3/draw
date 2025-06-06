@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  client:
+    image: my-websocket-client:v1
+    container_name: drawbattle-client
+    expose:
+      - "80"
+    depends_on:
+      - server
+    networks:
+      - 'proxy_manager_internal_net'
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - VITE_SERVER_URL=https://drawbattle-server.daongochoa.click
+
+  server:
+    image: my-websocket-server:v1
+    container_name: drawbattle-server
+    expose:
+      - "3000"
+    networks:
+      - 'proxy_manager_internal_net'
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - CLIENT_URL=https://drawbattle-client.daongochoa.click
+
+networks:
+  proxy_manager_internal_net:
+    external: true 

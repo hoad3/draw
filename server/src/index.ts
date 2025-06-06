@@ -10,23 +10,31 @@ interface User {
 }
 
 const app = express();
-app.use(cors({
-  origin: "http://localhost:5173",
+
+// CORS configuration
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://drawbattle.daongochoa.click']  // Chỉ cần domain HTTPS
+    : 'http://localhost:5173',
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
-  },
+  cors: corsOptions,
   transports: ['websocket', 'polling'],
-  allowEIO3: true
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  connectTimeout: 45000,
+  maxHttpBufferSize: 1e8,
+  path: '/socket.io/',
+  allowUpgrades: true,
+  upgradeTimeout: 30000
 });
 
 const rooms = new Map<string, Room>();
@@ -52,7 +60,7 @@ io.on('connection', (socket) => {
 
       rooms.set(data.roomId, newRoom);
       socket.join(data.roomId);
-      console.log('Room created:', data.roomId);
+      // console.log('Room created:', data.roomId);
       socket.emit('room-created', { 
         roomId: data.roomId,
         username: data.username,
@@ -81,34 +89,29 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Check if user is already in the room
       const existingUser = room.users.find(user => user.id === socket.id);
       if (!existingUser) {
         room.users.push({ id: socket.id, username: data.username });
         socket.join(data.roomId);
-        console.log('User joined room:', data.roomId);
+        // console.log('User joined room:', data.roomId);
         
-        // Send confirmation to the joining user with the complete user list
-        socket.emit('room-joined', { 
+        socket.emit('room-joined', {
           roomId: data.roomId, 
           username: data.username,
-          users: room.users // Send the complete user list
+          users: room.users
         });
         
-        // Send existing drawings to the new user
         socket.emit('load-drawings', room.drawings);
 
-        // Notify all users in the room about the new user and send updated user list
         io.to(data.roomId).emit('user-joined', {
           username: data.username,
-          users: room.users // Send updated user list to all users
+          users: room.users
         });
       } else {
-        console.log('User already in room:', data.roomId);
-        socket.emit('room-joined', { 
+        socket.emit('room-joined', {
           roomId: data.roomId, 
           username: data.username,
-          users: room.users // Send the complete user list
+          users: room.users
         });
         socket.emit('load-drawings', room.drawings);
       }
@@ -120,20 +123,16 @@ io.on('connection', (socket) => {
 
   socket.on('draw', (drawData: DrawData) => {
     try {
-      console.log('Received draw data:', drawData);
       const room = rooms.get(drawData.roomId);
       if (!room) {
         console.error('Room not found for drawing:', drawData.roomId);
         return;
       }
 
-      // Add the drawing to the room's drawings array
       room.drawings.push(drawData);
 
-      // Broadcast the drawing to all users in the room including the sender
       io.to(drawData.roomId).emit('draw', drawData);
 
-      // Calculate and broadcast updated scores
       const scores = calculateScores(room.drawings, room.users);
       io.to(drawData.roomId).emit('scores-updated', scores);
     } catch (error) {
@@ -141,23 +140,19 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Helper function to calculate scores
   function calculateScores(drawings: DrawData[], users: User[]): { username: string; percentage: string }[] {
     const totalPixels = 800 * 600; // Canvas size
     const userScores: { [username: string]: number } = {};
 
-    // Initialize scores for all users
     users.forEach(user => {
       userScores[user.username] = 0;
     });
 
-    // Calculate scores based on drawings
     drawings.forEach(drawing => {
       const pixels = Math.PI * Math.pow(drawing.lineWidth / 2, 2) * drawing.points.length;
       userScores[drawing.username] += pixels;
     });
 
-    // Convert to percentages
     return users.map(user => ({
       username: user.username,
       percentage: ((userScores[user.username] / totalPixels) * 100).toFixed(2)
@@ -215,7 +210,6 @@ io.on('connection', (socket) => {
   socket.on('game-end', (data: { roomId: string; results: { username: string; percentage: string }[] }) => {
     const room = rooms.get(data.roomId);
     if (room) {
-      // Broadcast game-end event with results to all users in the room
       room.users.forEach(user => {
         const userSocket = Array.from(io.sockets.sockets.values())
           .find(s => s.id === user.id);
@@ -229,14 +223,12 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     
-    // Remove user from all rooms
     rooms.forEach((room, roomId) => {
       const userIndex = room.users.findIndex(user => user.id === socket.id);
       if (userIndex !== -1) {
         const username = room.users[userIndex].username;
         room.users.splice(userIndex, 1);
         
-        // If room is empty, delete it
         if (room.users.length === 0) {
           rooms.delete(roomId);
         } else {

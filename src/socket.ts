@@ -5,13 +5,19 @@ class SocketManager {
   private socket: Socket | null = null;
 
   private constructor() {
-    this.socket = io('http://localhost:3000', {
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+    // console.log('Connecting to server:', serverUrl); // Debug log
+    this.socket = io(serverUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      timeout: 20000
+      timeout: 45000,
+      path: '/socket.io/',
+      forceNew: true,
+      autoConnect: true,
+      secure: true // Enable secure connection
     });
     this.setupSocketListeners();
   }
@@ -25,6 +31,7 @@ class SocketManager {
 
     this.socket.on('connect_error', (error) => {
       console.error('Connection error:', error);
+      console.log('Current server URL:', import.meta.env.VITE_SERVER_URL); // Debug log
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -45,13 +52,19 @@ class SocketManager {
 
   public getSocket(): Socket {
     if (!this.socket) {
-      this.socket = io('http://localhost:3000', {
+      const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3000';
+      // console.log('Connecting to server:', serverUrl); // Debug log
+      this.socket = io(serverUrl, {
         withCredentials: true,
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
-        timeout: 20000
+        timeout: 45000,
+        path: '/socket.io/',
+        forceNew: true,
+        autoConnect: true,
+        secure: true // Enable secure connection
       });
       this.setupSocketListeners();
     }

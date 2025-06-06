@@ -63,7 +63,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     dispatch(setConnectionStatus(true));
 
     socket.on('load-drawings', (drawings: DrawData[]) => {
-      console.log('Loading drawings:', drawings.length);
+      // console.log('Loading drawings:', drawings.length);
       // Clear canvas first
       const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
       if (context) {
@@ -78,7 +78,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('draw', (drawData: DrawData) => {
-      console.log('Received draw data:', drawData);
+      // console.log('Received draw data:', drawData);
       drawOnCanvas(drawData);
     });
 
@@ -92,7 +92,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('clear-canvas', () => {
-      console.log('Clearing canvas');
+      // console.log('Clearing canvas');
       const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
       if (context) {
         context.clearRect(0, 0, width, height);
@@ -102,7 +102,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('user-joined', (data: { username: string; users: { id: string; username: string }[] }) => {
-      console.log(`${data.username} joined the room`);
+      // console.log(`${data.username} joined the room`);
       if (currentUser && currentRoom) {
         dispatch(setCurrentRoom({
           id: currentRoom.id,
@@ -117,7 +117,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('user-left', (username: string) => {
-      console.log(`${username} left the room`);
+      // console.log(`${username} left the room`);
       if (currentRoom) {
         const updatedUsers = currentRoom.users.filter(user => user.username !== username);
         dispatch(setCurrentRoom({
@@ -128,7 +128,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
     });
 
     socket.on('room-joined', (data: RoomJoinedData) => {
-      console.log('Room joined with users:', data.users);
+      // console.log('Room joined with users:', data.users);
       dispatch(setCurrentRoom({
         id: data.roomId,
         password: currentRoom?.password || '',
@@ -247,7 +247,7 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
         roomId,
         username
       };
-      console.log('Sending draw data:', drawData);
+      // console.log('Sending draw data:', drawData);
       socket.emit('draw', drawData);
       lastDrawTimeRef.current = currentTime;
       
@@ -376,106 +376,111 @@ const FieldDraw: React.FC<FieldDrawProps> = ({
   }, [currentRoom?.drawings]);
 
   return (
-    <div className="flex gap-8">
-      <div className="flex flex-col items-center gap-4">
-        <div className="flex gap-4 items-center">
-          <div className="bg-gray-100 px-4 py-2 rounded-lg">
-            <p className="text-sm text-gray-600">Room: {roomId}</p>
-            <p className="text-sm text-gray-600">User: {username}</p>
-            {isGameStarted && (
-              <p className="text-sm font-semibold text-red-500">
-                Time left: {timeLeft}s
-              </p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-500 w-full">
+      <div className="flex flex-col md:flex-row items-center justify-center w-full gap-12 p-6">
+        <div className="flex-1 flex flex-col items-center gap-4">
+          <div className="flex gap-4 items-center mb-4">
+            <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-600 dark:text-gray-200">Room: {roomId}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-200">User: {username}</p>
+              {isGameStarted && (
+                <p className="text-sm font-semibold text-red-500">Time left: {timeLeft}s</p>
+              )}
+            </div>
+            <input
+              type="color"
+              value={currentColorRef.current}
+              onChange={(e) => {
+                currentColorRef.current = e.target.value;
+                const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
+                if (context) {
+                  context.strokeStyle = e.target.value;
+                }
+              }}
+              className="w-10 h-10 rounded cursor-pointer"
+              disabled={isGameStarted}
+            />
+            <input
+              type="range"
+              min="1"
+              max="20"
+              value={currentLineWidthRef.current}
+              onChange={(e) => {
+                currentLineWidthRef.current = Number(e.target.value);
+                const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
+                if (context) {
+                  context.lineWidth = Number(e.target.value);
+                }
+              }}
+              className="w-32"
+              disabled={isGameStarted}
+            />
+            <button
+              onClick={clearCanvas}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              disabled={isGameStarted}
+            >
+              Clear
+            </button>
+            {!isGameStarted && (
+              <button
+                onClick={startGame}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              >
+                Start
+              </button>
             )}
           </div>
-          <input
-            type="color"
-            value={currentColorRef.current}
-            onChange={(e) => {
-              currentColorRef.current = e.target.value;
-              const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
-              if (context) {
-                context.strokeStyle = e.target.value;
+          <div className="w-full flex justify-center">
+            <canvas
+              ref={canvasRef}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseOut={stopDrawing}
+              style={{ border: '1px solid #ccc', background: '#fff' }}
+              className={
+                'rounded-lg shadow-lg ' +
+                (isGameStarted ? 'cursor-crosshair' : 'cursor-not-allowed')
               }
-            }}
-            className="w-10 h-10 rounded cursor-pointer"
-            disabled={isGameStarted}
-          />
-          <input
-            type="range"
-            min="1"
-            max="20"
-            value={currentLineWidthRef.current}
-            onChange={(e) => {
-              currentLineWidthRef.current = Number(e.target.value);
-              const context = canvasRef.current?.getContext('2d') as CanvasRenderingContext2D;
-              if (context) {
-                context.lineWidth = Number(e.target.value);
-              }
-            }}
-            className="w-32"
-            disabled={isGameStarted}
-          />
-          <button
-            onClick={clearCanvas}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            disabled={isGameStarted}
-          >
-            Clear
-          </button>
-          {!isGameStarted && (
-            <button
-              onClick={startGame}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Start
-            </button>
-          )}
-        </div>
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseOut={stopDrawing}
-          style={{ border: '1px solid #ccc' }}
-          className={isGameStarted ? 'cursor-crosshair' : 'cursor-not-allowed'}
-        />
-      </div>
-
-      {currentRoom && (
-        <div className="bg-white rounded-lg shadow-lg p-4 min-w-[200px] h-fit">
-          <h3 className="text-lg font-semibold mb-3 text-gray-700">Users in Room</h3>
-          <div className="space-y-2">
-            {currentRoom.users.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-              >
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-700">{user.username}</span>
-                </div>
-                <span className="text-sm text-gray-500">
-                  {isGameStarted ? userScores[user.username] || '0' + '%' : '0%'}
-                </span>
-              </div>
-            ))}
+              width={width}
+              height={height}
+            />
           </div>
         </div>
-      )}
-
-      <ResultDialog
-        isOpen={showResults}
-        onClose={() => setShowResults(false)}
-        results={currentRoom?.users
-          .map(user => ({
-            username: user.username,
-            percentage: userScores[user.username] || '0'
-          }))
-          .sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage)) || []}
-        roomId={roomId}
-      />
+        {currentRoom && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 min-w-[220px] h-fit border border-gray-200 dark:border-gray-700 flex flex-col items-center">
+            <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-100">Users in Room</h3>
+            <div className="space-y-2 w-full">
+              {currentRoom.users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-md"
+                >
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-700 dark:text-gray-200">{user.username}</span>
+                  </div>
+                  <span className="text-sm text-gray-500 dark:text-gray-300">
+                    {isGameStarted ? userScores[user.username] || '0' + '%' : '0%'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <ResultDialog
+          isOpen={showResults}
+          onClose={() => setShowResults(false)}
+          results={currentRoom?.users
+            .map(user => ({
+              username: user.username,
+              percentage: userScores[user.username] || '0'
+            }))
+            .sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage)) || []}
+          roomId={roomId}
+        />
+      </div>
     </div>
   );
 };

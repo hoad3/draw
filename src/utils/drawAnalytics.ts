@@ -30,15 +30,12 @@ export const calculateColorUsage = (drawings: DrawData[], width: number, height:
     const key = `${drawing.username}-${drawing.color}`;
     const existingStat = colorStats.get(key);
 
-    // Calculate pixels drawn in this stroke
     const pixels = Math.PI * Math.pow(drawing.lineWidth / 2, 2) * drawing.points.length;
 
     if (existingStat) {
-      // Accumulate pixels and update percentage
       existingStat.pixelCount += pixels;
       existingStat.percentage = (existingStat.pixelCount / totalPixels) * 100;
     } else {
-      // Create new stat entry
       colorStats.set(key, {
         username: drawing.username,
         color: drawing.color,
@@ -75,11 +72,9 @@ export const getTotalColorUsage = (drawings: DrawData[], canvasWidth: number, ca
     ctx.stroke();
   });
 
-  // Get image data to analyze pixels
   const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   const data = imageData.data;
 
-  // Count colored pixels for each color
   const colorBreakdown: { [color: string]: number } = {};
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] > 0) { // If pixel is not transparent
@@ -88,7 +83,6 @@ export const getTotalColorUsage = (drawings: DrawData[], canvasWidth: number, ca
     }
   }
 
-  // Convert to percentage format
   const colorUsage: ColorStat[] = Object.entries(colorBreakdown).map(([color, pixelCount]) => ({
     username: 'Total',
     color,
@@ -96,6 +90,5 @@ export const getTotalColorUsage = (drawings: DrawData[], canvasWidth: number, ca
     pixelCount
   }));
 
-  // Sort by percentage in descending order
   return colorUsage.sort((a, b) => b.percentage - a.percentage);
 }; 
